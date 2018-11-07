@@ -17,11 +17,13 @@ def get_sentences(file_path):
 
 def get_top_k_words(sentences, k):
     """Return the k most frequent words as a list."""
-    for word in sentencs:
-        if word in words:
-            words[word] +=1
-        else:
-            words[word] =1
+    words = {}
+    for sen in sentences:
+        for word in sen.split():
+            if word in words:
+                words[word] +=1
+            else:
+                words[word] =1
     return sorted(words, key=words.get, reverse=True)[:k]
 
 
@@ -30,10 +32,10 @@ def encode(sentence, vocabulary):
     mydict = {}
     for i in vocabulary:
         mydict[i]=0
-    for word in sentence:
+    for word in sentence.split():
         if word in mydict:
             mydict[word] +=1
-    return np.asarray(mydict.values())
+    return np.asarray(list(mydict.values()), dtype=np.int32)
 
 
 def get_top_l_sentences(sentences, query, vocabulary, l):
@@ -44,18 +46,18 @@ def get_top_l_sentences(sentences, query, vocabulary, l):
     Return the top-l most similar sentences as a list of tuples of the form
     (similarity, sentence).
     """
-    l = []
+    sim_sen = []
     for sen in sentences:
-        sim = cosine_sim(encode(sen), encode(query))
-        l.append((sim,sen))
+        sim = cosine_sim(encode(sen, vocabulary), encode(query, vocabulary))
+        sim_sen.append((sim,sen))
     
-    return sorted(l, key=lambda tup: tup[0], reverse=True)[:l]
+    return sorted(sim_sen, key=lambda tup: tup[0], reverse=True)[:l]
 
 
 def cosine_sim(u, v):
     """Return the cosine similarity of u and v."""
     
-    return np.dot(u,v) / np.linalg.norm(u) * np.linalg.norm(v)
+    return np.dot(u,v) / (np.linalg.norm(u) * np.linalg.norm(v))
 
 
 def main():
@@ -66,7 +68,8 @@ def main():
                             help='How many of the most frequent words to consider')
     arg_parser.add_argument('-l', type=int, default=10, help='How many sentences to return')
     args = arg_parser.parse_args()
-
+    
+    print(args.INPUT_FILE)
     sentences = get_sentences(args.INPUT_FILE)
     top_k_words = get_top_k_words(sentences, args.k)
     query = args.QUERY.lower()
@@ -77,7 +80,7 @@ def main():
     # suppress numpy's "divide by 0" warning.
     # this is fine since we consider a zero-vector to be dissimilar to other vectors
     with np.errstate(invalid='ignore'):
-        result = get_top_l_sentences(sentences, query, top_k_words, args.l)
+        result = get_top_l_sentences(sentences, query, top_k_words, int(args.l))
 
     print('result:')
     for sim, sentence in result:
